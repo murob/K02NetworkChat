@@ -1,14 +1,16 @@
-package chat7;
+package multichat;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+
 
 public class MultiServer {
 	
@@ -117,7 +119,7 @@ public class MultiServer {
 		PrintWriter out = null;
 		BufferedReader in = null;
 		
-		public MultiServerT(Socket socket) {
+		public MultiServerT(Socket socket) {//네이버라는 소켓의 쓰레드가 생성..
 			this.socket = socket;
 			try {
 				out = new PrintWriter(this.socket.getOutputStream(), true);
@@ -138,6 +140,20 @@ public class MultiServer {
 				if(in != null) {
 					//클라이언트의 이름을 읽어온다.
 					name = in.readLine();
+					
+					Iterator<String> itr = clientMap.keySet().iterator();
+					while(itr.hasNext()) {
+						String clientName = itr.next();
+						if(name.equals(clientName)) {
+							System.out.println("중복된 이름이 존재합니다.");
+							this.interrupt();
+							name=name+"temp";
+							in.close();
+							out.close();
+							socket.close();
+							return;
+						}
+					} 
 					//방금 접속한 클라이언트를 제외한 나머지에게 입장을 알린다.
 					sendAllMsg("", name+"님이 입장하셨습니다.", "All");
 					//현재 접속한 클라이언트를 HashMap에 저장한다.
@@ -151,6 +167,7 @@ public class MultiServer {
 					//입력한 메세지는 모든 클라이언트에게 Echo된다.
 					while(in != null) {
 						s = in.readLine();
+						
 						if(s == null) break;
 						//서버의 콘솔에 출력되고..
 						System.out.println(name +" >> " + s);
@@ -172,21 +189,22 @@ public class MultiServer {
 					}
 				}
 			}
+			/*
+			클라이언트가 접속을 종료하면 Socket예외가 발생하게 되어
+			finally절로 진입하게 된다. 이때 "대화명"을 통해 정보를
+			삭제한다.
+			 */
 			catch (Exception e) {
 				System.out.println("예외1:"+ e);
 			}
 			finally {
-				/*
-				클라이언트가 접속을 종료하면 Socket예외가 발생하게 되어
-				finally절로 진입하게 된다. 이때 "대화명"을 통해 정보를
-				삭제한다.
-				 */
-				clientMap.remove(name);
-				sendAllMsg("", name + "님이 퇴장하셨습니다.", "All");
-				System.out.println(name + " ["+
-				Thread.currentThread().getName()+"] 퇴장");
-				System.out.println("현재 접속자 수는"+clientMap.size()+"명 입니다.");
+				
 				try {
+					clientMap.remove(name);
+					sendAllMsg("", name + "님이 퇴장하셨습니다.", "All");
+					System.out.println(name + " ["+
+							Thread.currentThread().getName()+"] 퇴장");
+					System.out.println("현재 접속자 수는"+clientMap.size()+"명 입니다.");
 					in.close();
 					out.close();
 					socket.close();
@@ -196,6 +214,5 @@ public class MultiServer {
 				} 
 			}
 		}	
-
 	}
 }
