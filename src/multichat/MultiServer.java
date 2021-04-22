@@ -3,16 +3,21 @@ package multichat;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.net.ConnectException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 
 
-public class MultiServer {
+
+public class MultiServer implements maxNum {
 	
 	//멤버변수
 	static ServerSocket serverSocket = null;
@@ -21,12 +26,26 @@ public class MultiServer {
 	//클라이언트 정보저장을 위한 Map 컬렉션 생성
 	Map<String, PrintWriter> clientMap;
 	
+	HashSet<String> blackList;
+//	HashSet<String> pWords;
+	
+	
 	//생성자
 	public MultiServer() {
 		//클라이언트의 이름과 출력스트림을 저장할 HashMap 컬렉션 생성
 		clientMap = new HashMap<String, PrintWriter>();
 		//HashMap 동기화설정. 쓰레드가 사용자정보에 동시에 접근하는 것을 차단함
 		Collections.synchronizedMap(clientMap);
+		
+		//블랙리스트 셋 선언
+		blackList = new HashSet<String>();
+		blackList.add("코스모");
+		blackList.add("kosmo");
+		
+		//금칙어 셋 선언
+//		pWords = new HashSet<String>();
+//		pWords.add("씨발");
+//		pWords.add("개새끼");
 	}
 	
 	//채팅 서버 초기화
@@ -35,7 +54,7 @@ public class MultiServer {
 			serverSocket = new ServerSocket(9999);
 			System.out.println("서버가 시작되엇습니다.");
 			
-			while(true) {
+			for(int i=0; i<maxNum.MAX; i++) {
 				socket = serverSocket.accept();
 				System.out.println(socket.getInetAddress() + "(클라이언트)의"
 						+socket.getPort()+ "포트를 통해"
@@ -46,6 +65,12 @@ public class MultiServer {
 				//클라이언트 한명당 하나씩의 쓰레드가 생성된다.
 				Thread mst = new MultiServerT(socket);
 				mst.start();
+				
+				if(i==1) {
+//					MultiServerT smt = new MultiServerT(socket);
+//					smt.out.println("접속자수 제한으로 입장 불가");
+					mst.interrupt();
+				}
 			}
 		}
 		catch (Exception e) {
@@ -78,8 +103,7 @@ public class MultiServer {
 			try {
 				//컬렉션의 key는 클라이언트의 대화명이다.
 				String clientName = it.next();
-				PrintWriter it_out = 
-						(PrintWriter)clientMap.get(clientName);
+				PrintWriter it_out = (PrintWriter)clientMap.get(clientName);
 				
 				if(flag.equals("One")) {
 					//flag가 One이면 해당 클라이언트 한명에게만 전송한다.(귓속말)
@@ -98,11 +122,11 @@ public class MultiServer {
 					 */
 					if(name.equals("")) {
 						//입장, 퇴장에서 사용되는 부분
-						it_out.println(msg);
+						it_out.println(URLEncoder.encode(msg, "UTF-8"));
 					}
 					else {
 						//메세지를 보낼때 사용되는 부분
-						it_out.println("["+ name +"]:"+ msg);
+						it_out.println("["+ name +"]:"+ URLEncoder.encode(msg, "UTF-8"));
 					}
 				}
 			}
@@ -123,7 +147,7 @@ public class MultiServer {
 			this.socket = socket;
 			try {
 				out = new PrintWriter(this.socket.getOutputStream(), true);
-				in = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
+				in = new BufferedReader(new InputStreamReader(this.socket.getInputStream(), "UTF-8"));
 			}
 			catch (Exception e) {
 				System.out.println("예외:"+ e);
@@ -140,6 +164,7 @@ public class MultiServer {
 				if(in != null) {
 					//클라이언트의 이름을 읽어온다.
 					name = in.readLine();
+					name = URLDecoder.decode(name, "UTF-8");
 					
 					Iterator<String> itr = clientMap.keySet().iterator();
 					while(itr.hasNext()) {
@@ -154,6 +179,36 @@ public class MultiServer {
 							return;
 						}
 					} 
+					
+					//블랙리스트 설정
+					Iterator it = blackList.iterator();
+					while(it.hasNext()) {
+						String list = (String)it.next();
+						if(name.equals(list)) {
+							System.out.println("해당이름으론 만들 수 없습니다.");
+							this.interrupt();
+							name=name+"temp";
+							in.close();
+							out.close();
+							socket.close();
+							return;
+						}
+					}
+					
+					//대화 금칙어 처리
+//					Iterator ite = pWords.iterator();
+//					while(ite.hasNext()) {
+//						String list = (String)ite.next();
+//						if(s.equals(list)) {
+//							s="금지된언어입니다.";
+////							s=s+"temp";
+////							in.close();
+////							out.close();
+////							socket.close();
+////							return;
+//						}
+//					}
+					
 					//방금 접속한 클라이언트를 제외한 나머지에게 입장을 알린다.
 					sendAllMsg("", name+"님이 입장하셨습니다.", "All");
 					//현재 접속한 클라이언트를 HashMap에 저장한다.
@@ -167,6 +222,8 @@ public class MultiServer {
 					//입력한 메세지는 모든 클라이언트에게 Echo된다.
 					while(in != null) {
 						s = in.readLine();
+						s = URLDecoder.decode(s, "UTF-8");
+//						System.out.println("s");
 						
 						if(s == null) break;
 						//서버의 콘솔에 출력되고..

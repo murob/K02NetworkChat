@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.Socket;
 import java.net.SocketException;
+import java.net.URLDecoder;
 
 //서버가 보내는 Echo메세지를 읽어오는 쓰레드 클래스
 public class Receiver extends Thread {
@@ -18,7 +19,7 @@ public class Receiver extends Thread {
 		
 		try {
 //			in.readLine();
-			in = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
+			in = new BufferedReader(new InputStreamReader(this.socket.getInputStream(), "UTF-8"));
 		}
 //		catch(NullPointerException e) {
 //			System.out.println("중복값입니다.");
@@ -36,12 +37,13 @@ public class Receiver extends Thread {
 	public void run() {
 		while(in != null) {
 			try {
+				//서버에서 내려온 한글 데이터 사용을 위해 UTF-8로 디코딩
 				String a = in.readLine();
 				if(a==null) {
 					break;
 				}	
 				else {
-					System.out.println("Thread Receive : "+ a);
+					System.out.println(">>" + URLDecoder.decode(a, "UTF-8"));
 				}
 			}
 			catch (SocketException e) {

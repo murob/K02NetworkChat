@@ -1,5 +1,6 @@
 package multichat;
 
+import java.net.ConnectException;
 import java.net.Socket;
 import java.util.Scanner;
 
@@ -34,6 +35,9 @@ public class MultiClient {
 			//서버로 메세지를 전송할 센더 쓰레드 객체 생성
 			Thread sender = new Sender(socket, s_name);
 			sender.start();
+		}
+		catch (ConnectException e) {
+			System.out.println("접속자수 제한으로 입장 불가");
 		}
 		catch (Exception e) {
 			System.out.println("예외발생[MultiClient]"+ e);
