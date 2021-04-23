@@ -3,6 +3,7 @@ package multichat;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.URLEncoder;
+import java.util.HashSet;
 import java.util.Scanner;
 
 //클라이언트가 입력한 메세지를 서버로 전송해주는 쓰레드 클래스
@@ -10,10 +11,13 @@ public class Sender extends Thread {
 	Socket socket;
 	PrintWriter out = null;
 	String name;
-	
+//	HashSet<String> pWords;
 	//클라이언트가 접속시 사용했던 Socket객체를 기반으로 출력스트림 생성
 	public Sender(Socket socket, String name) {
 		this.socket = socket;
+//		pWords = new HashSet<String>();
+//		pWords.add("개새끼");
+//		pWords.add("씨발");
 		try {
 			out = new PrintWriter(this.socket.getOutputStream(), true);
 			this.name = name;
@@ -38,9 +42,9 @@ public class Sender extends Thread {
 					if(s2.equalsIgnoreCase("Q")) {
 						break;
 					}
-					else if(s2.equals("씨발") || s2.equals("개새끼")) {
-						System.out.println("금칙어입니다.");
-					}
+//					else if(pWords.contains(s2)) {
+//						System.out.println("금칙어입니다.");
+//					}
 					else {
 						out.println(URLEncoder.encode(s2, "UTF-8"));
 					}

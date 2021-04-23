@@ -3,12 +3,11 @@ package multichat;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
-import java.net.ConnectException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.SocketException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.sql.SQLData;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -17,7 +16,7 @@ import java.util.Map;
 
 
 
-public class MultiServer implements maxNum {
+public class MultiServer extends IConnectImpl implements maxNum {
 	
 	//멤버변수
 	static ServerSocket serverSocket = null;
@@ -27,11 +26,12 @@ public class MultiServer implements maxNum {
 	Map<String, PrintWriter> clientMap;
 	
 	HashSet<String> blackList;
-//	HashSet<String> pWords;
-	
+	HashSet<String> pWords;
 	
 	//생성자
 	public MultiServer() {
+		super(ORACLE_DRIVER, "kosmo", "1234");
+		
 		//클라이언트의 이름과 출력스트림을 저장할 HashMap 컬렉션 생성
 		clientMap = new HashMap<String, PrintWriter>();
 		//HashMap 동기화설정. 쓰레드가 사용자정보에 동시에 접근하는 것을 차단함
@@ -43,9 +43,9 @@ public class MultiServer implements maxNum {
 		blackList.add("kosmo");
 		
 		//금칙어 셋 선언
-//		pWords = new HashSet<String>();
-//		pWords.add("씨발");
-//		pWords.add("개새끼");
+		pWords = new HashSet<String>();
+		pWords.add("씨발");
+		pWords.add("개새끼");
 	}
 	
 	//채팅 서버 초기화
@@ -101,9 +101,24 @@ public class MultiServer implements maxNum {
 		while(it.hasNext()) {
 			//각 클라이언트의 PrintWriter객체를 얻어온다.
 			try {
+				String query = "INSERT INTO chat_talking VALUES (seq_chat.nextval, ?, ?, ?, ?)";
+				psmt = con.prepareStatement(query);
+				
 				//컬렉션의 key는 클라이언트의 대화명이다.
 				String clientName = it.next();
 				PrintWriter it_out = (PrintWriter)clientMap.get(clientName);
+				
+				psmt.setString(1, clientName);
+				psmt.setString(2, msg);
+				psmt.setString(3, flag);
+				
+				
+				java.util.Date utilDate = new java.util.Date();
+				java.sql.Date sqlDate = new java.sql.Date(utilDate.getTime());
+				psmt.setDate(4, sqlDate);
+				
+				int affected = psmt.executeUpdate();
+//				System.out.println(affected +"행이 입력되었습니다.");
 				
 				if(flag.equals("One")) {
 					//flag가 One이면 해당 클라이언트 한명에게만 전송한다.(귓속말)
@@ -159,6 +174,7 @@ public class MultiServer implements maxNum {
 			
 			String name = "";
 			String s = "";
+//			clientMap.containsKey(name);
 			
 			try {
 				if(in != null) {
@@ -195,19 +211,7 @@ public class MultiServer implements maxNum {
 						}
 					}
 					
-					//대화 금칙어 처리
-//					Iterator ite = pWords.iterator();
-//					while(ite.hasNext()) {
-//						String list = (String)ite.next();
-//						if(s.equals(list)) {
-//							s="금지된언어입니다.";
-////							s=s+"temp";
-////							in.close();
-////							out.close();
-////							socket.close();
-////							return;
-//						}
-//					}
+					
 					
 					//방금 접속한 클라이언트를 제외한 나머지에게 입장을 알린다.
 					sendAllMsg("", name+"님이 입장하셨습니다.", "All");
@@ -239,10 +243,47 @@ public class MultiServer implements maxNum {
 							if(strArr[0].equals("/to")) {
 								sendAllMsg(strArr[1], msgContent, "One");
 							}
+							//fixto를 만들어야하는데...
+							else if(strArr[0].equals("/fixto")) {
+								for(int i=0; i<100; i++) {
+									sendAllMsg(strArr[1], msgContent, "One");
+									System.out.println(name +" >> " + s);
+									if(strArr[0].equals("/unfixto")) {
+										break;
+									}
+//									return;
+								}
+//								else if(strArr[0].equals("/unfixto")) {
+//									break;
+//								}
+							}
 						}
+						
+						//(수정필요)금칙어 단독뿐만아니라 금칙어가 포함된 문장도 금칙어 처리해야함..
 						else {
-							sendAllMsg(name, s, "All");
+							String[] strArr = s.split(" ");
+							String msgContent = "";
+							for(int i=0; i<strArr.length; i++) {
+								for(String a:pWords) {
+									if(strArr[i].equals(a)) {
+										strArr[i] = "나쁜말!";
+									}
+								}
+								msgContent += strArr[i]+" ";
+							}
+							sendAllMsg(name, msgContent, "All");
 						}
+
+//						String[] strArr = s.split(" ");
+//						String msgContent = "";
+//						for(int i=0; i<strArr.length; i++) {
+//							for(String a:pWords) {
+//								if(strArr[i].equals(a)) {
+//									strArr[i] = "나쁜말!";
+//								}
+//							}
+//							msgContent += strArr[i]+" ";
+//						}
 					}
 				}
 			}
