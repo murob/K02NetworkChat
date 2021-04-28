@@ -27,6 +27,7 @@ public class MultiServer extends IConnectImpl implements maxNum {
 	
 	HashSet<String> blackList;
 	HashSet<String> pWords;
+	HashSet<String> fixto;
 	
 	//생성자
 	public MultiServer() {
@@ -240,19 +241,22 @@ public class MultiServer extends IConnectImpl implements maxNum {
 							for(int i=2; i<strArr.length; i++) {
 								msgContent += strArr[i]+" ";
 							}
+							
+							//일회용 귓속말 처리
 							if(strArr[0].equals("/to")) {
 								sendAllMsg(strArr[1], msgContent, "One");
 							}
+							
 							//fixto를 만들어야하는데...
-							else if(strArr[0].equals("/fixto")) {
-								for(int i=0; i<100; i++) {
-									sendAllMsg(strArr[1], msgContent, "One");
-									System.out.println(name +" >> " + s);
-									if(strArr[0].equals("/unfixto")) {
-										break;
-									}
-//									return;
+							if(strArr[0].equals("/fixto")) {
+								strArr[0] = "/fixto";
+								sendAllMsg(strArr[1], msgContent, "One");
+								System.out.println(name +" >> " + s);
+								if(strArr[0].equals("/unfixto")) {
+									strArr[0]=null;
 								}
+//									return;
+								
 //								else if(strArr[0].equals("/unfixto")) {
 //									break;
 //								}
